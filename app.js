@@ -230,7 +230,88 @@ const state = {
   lastRepTime: 0,
   holdMs: 0,      // planka kabi "hold" mashqlarda to'plangan vaqt
   holdLast: null, // oxirgi kadr vaqti (hold davom etayotganda)
+  weight: 70,     // kg — kaloriya hisobida ishlatiladi
 };
+
+// ── Tarix va profil (localStorage) ──
+const WEIGHT_KEY = "sanogich_weight";
+const HISTORY_KEY = "sanogich_history";
+
+function loadHistory() {
+  try {
+    return JSON.parse(localStorage.getItem(HISTORY_KEY)) || {};
+  } catch {
+    return {};
+  }
+}
+
+function todayKey() {
+  return new Date().toISOString().slice(0, 10);
+}
+
+// Har bir takror (yoki planka soniyasi) kunlik tarixga yoziladi.
+function recordActivity(exKey, calories, { reps = 0, seconds = 0 } = {}) {
+  const hist = loadHistory();
+  const day = (hist[todayKey()] ??= { exercises: {}, calories: 0 });
+  const rec = (day.exercises[exKey] ??= { reps: 0, seconds: 0 });
+  rec.reps += reps;
+  rec.seconds += seconds;
+  day.calories += calories;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(hist));
+  renderHistory();
+}
+
+function formatDay(dayKey) {
+  return dayKey === todayKey() ? `Bugun (${dayKey})` : dayKey;
+}
+
+function renderHistory() {
+  const hist = loadHistory();
+  const days = Object.keys(hist).sort().reverse().slice(0, 7);
+  const listEl = document.getElementById("history-list");
+  if (days.length === 0) {
+    listEl.innerHTML = '<p class="empty">Hali mashq qilinmagan</p>';
+    return;
+  }
+  listEl.innerHTML = days
+    .map((dayKey) => {
+      const day = hist[dayKey];
+      const items = Object.entries(day.exercises)
+        .map(([exKey, rec]) => {
+          const ex = EXERCISES[exKey];
+          const name = ex?.name ?? exKey;
+          return ex?.type === "hold"
+            ? `${name}: ${rec.seconds} soniya`
+            : `${name}: ${rec.reps} marta`;
+        })
+        .join(" · ");
+      return `<div class="history-day">
+        <div class="day-header">
+          <span>${formatDay(dayKey)}</span>
+          <span class="day-calories">🔥 ${Math.round(day.calories)} kkal</span>
+        </div>
+        <div class="day-items">${items}</div>
+      </div>`;
+    })
+    .join("");
+}
+
+// Bugungi natijalarni Samsung Health'ga qo'lda kiritish uchun qulay matn.
+function buildShareText() {
+  const day = loadHistory()[todayKey()];
+  if (!day) return null;
+  const lines = [`🏋️ Sanogich — bugungi mashqlar (${todayKey()}):`];
+  for (const [exKey, rec] of Object.entries(day.exercises)) {
+    const ex = EXERCISES[exKey];
+    lines.push(
+      ex?.type === "hold"
+        ? `⏱️ ${ex?.name ?? exKey}: ${rec.seconds} soniya`
+        : `💪 ${ex?.name ?? exKey}: ${rec.reps} marta`
+    );
+  }
+  lines.push(`🔥 Kaloriya: ${Math.round(day.calories)} kkal`);
+  return lines.join("\n");
+}
 
 // ── DOM ──
 const $ = (id) => document.getElementById(id);
@@ -323,7 +404,9 @@ function processDetection(result) {
       const secs = Math.floor(state.holdMs / 1000);
       if (secs !== state.reps) {
         state.reps = secs;
-        state.calories += ex.caloriesPerRep;
+        const cal = ex.caloriesPerRep * (state.weight / 70);
+        state.calories += cal;
+        recordActivity(state.exercise, cal, { seconds: 1 });
         updateRepUI();
         if (secs > 0 && secs % 10 === 0) {
           beep(1320);
@@ -349,7 +432,9 @@ function processDetection(result) {
       if (now - state.lastRepTime > 400) {
         state.reps += 1;
         state.totalReps += 1;
-        state.calories += ex.caloriesPerRep;
+        const cal = ex.caloriesPerRep * (state.weight / 70);
+        state.calories += cal;
+        recordActivity(state.exercise, cal, { reps: 1 });
         state.lastRepTime = now;
         updateRepUI();
         beep(state.reps % 10 === 0 ? 1320 : 880);
@@ -510,6 +595,68 @@ $("sound-btn").addEventListener("click", () => {
   state.soundOn = !state.soundOn;
   $("sound-btn").textContent = state.soundOn ? "🔊 Ovoz" : "🔇 Ovoz";
 });
+
+// ── Vazn sozlamasi ──
+const weightInput = $("weight-input");
+state.weight = Number(localStorage.getItem(WEIGHT_KEY)) || 70;
+weightInput.value = state.weight;
+weightInput.addEventListener("change", () => {
+  const w = Number(weightInput.value);
+  if (w >= 20 && w <= 250) {
+    state.weight = w;
+    localStorage.setItem(WEIGHT_KEY, String(w));
+    setFeedback(`Vazn saqlandi: ${w} kg — kaloriya endi shunga qarab hisoblanadi`, "good");
+  } else {
+    weightInput.value = state.weight;
+  }
+});
+
+// ── Ulashish (Samsung Health'ga qo'lda kiritish uchun tayyor matn) ──
+$("share-btn").addEventListener("click", async () => {
+  const text = buildShareText();
+  if (!text) {
+    setFeedback("Bugun hali mashq qilinmagan — avval mashq qiling!", "warn");
+    return;
+  }
+  try {
+    if (navigator.share) {
+      await navigator.share({ title: "Sanogich", text });
+    } else {
+      await navigator.clipboard.writeText(text);
+      setFeedback("Natija nusxalandi — Samsung Health'ga joylashtiring", "good");
+    }
+  } catch (err) {
+    if (err.name !== "AbortError") {
+      setFeedback("Ulashib bo'lmadi — qo'lda nusxalang", "warn");
+    }
+  }
+});
+
+// ── CSV eksport (Excel / Google Sheets'da ochish uchun) ──
+$("csv-btn").addEventListener("click", () => {
+  const hist = loadHistory();
+  const rows = [["Sana", "Mashq", "Takror", "Soniya", "Kaloriya (kun jami)"]];
+  for (const dayKey of Object.keys(hist).sort()) {
+    const day = hist[dayKey];
+    for (const [exKey, rec] of Object.entries(day.exercises)) {
+      rows.push([dayKey, EXERCISES[exKey]?.name ?? exKey, rec.reps, rec.seconds, Math.round(day.calories)]);
+    }
+  }
+  if (rows.length === 1) {
+    setFeedback("Tarix bo'sh — avval mashq qiling!", "warn");
+    return;
+  }
+  // ﻿ (BOM) — Excel faylni UTF-8 sifatida to'g'ri ochishi uchun.
+  const csv = "﻿" + rows.map((r) => r.join(",")).join("\n");
+  const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `sanogich-tarix-${todayKey()}.csv`;
+  a.click();
+  URL.revokeObjectURL(url);
+});
+
+renderHistory();
 
 // Sahifa yopilganda kamerani o'chiramiz.
 window.addEventListener("pagehide", stopCamera);

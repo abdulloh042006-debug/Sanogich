@@ -97,6 +97,32 @@
       </div>
     </section>
 
+    <section id="profile-row">
+      <label for="weight-input">⚖️ Vazningiz:</label>
+      <input id="weight-input" type="number" inputmode="numeric" min="20" max="250" value="70" />
+      <span class="unit">kg</span>
+      <span class="hint">— kaloriya shunga qarab hisoblanadi</span>
+    </section>
+
+    <section id="history-section">
+      <details>
+        <summary>📅 Mashqlar tarixi va kaloriyalar</summary>
+        <div id="history-list">
+          <p class="empty">Hali mashq qilinmagan</p>
+        </div>
+        <div id="history-actions">
+          <button id="share-btn">📤 Ulashish</button>
+          <button id="csv-btn">⬇️ CSV yuklab olish</button>
+        </div>
+        <p class="health-note">
+          💚 <strong>Samsung Health'ga qo'shish:</strong> «Ulashish» tugmasi bugungi
+          natijangizni tayyor matn qilib beradi. Samsung Health ilovasida
+          <em>Mashqlar → ➕ Mashq kiritish</em> bo'limiga kaloriya va vaqtni
+          kiriting — sog'lomlik tizimingizda hisobga olinadi.
+        </p>
+      </details>
+    </section>
+
     <footer>
       <details>
         <summary>ℹ️ Qanday ishlatiladi?</summary>

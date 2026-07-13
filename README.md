@@ -17,6 +17,9 @@ Qo'shimcha:
 
 - 🔊 Har takrorda ovozli signal, har 10-takrorda sonni aytib beradi
 - 📊 Jami takror, vaqt va taxminiy kaloriya statistikasi
+- ⚖️ Vazningizni kiritsangiz, kaloriya shunga qarab aniqroq hisoblanadi
+- 📅 Kunlik mashqlar tarixi telefonda saqlanadi (oxirgi 7 kun ko'rsatiladi)
+- 📤 Bugungi natijani ulashish (Web Share) va CSV eksport
 - 🔃 Old/orqa kamerani almashtirish
 - 🎯 Skelet chizig'i — tanangiz qanday aniqlanayotganini ko'rasiz
 - 🔒 **Maxfiylik**: barcha hisob-kitoblar qurilmangizning o'zida bajariladi, video hech qayerga yuborilmaydi
@@ -55,6 +58,20 @@ Yoki **GitHub Pages** orqali bepul joylashtiring: repozitoriy sozlamalarida *Set
 - Yorug' joyda mashq qiling
 - Kameradan 2–3 metr uzoqlikda turing
 - Birinchi ochilishda AI model yuklanishi ~10 soniya vaqt oladi (keyin keshda saqlanadi)
+
+## Samsung Health / sog'lomlik tizimlari bilan integratsiya
+
+Veb-sahifalar Samsung Health'ga **to'g'ridan-to'g'ri yoza olmaydi** — Samsung va
+Google (Health Connect) buni faqat Play Store'dagi native Android ilovalarga,
+maxsus ruxsat bilan ochib beradi. Shuning uchun ilovada eng qulay muqobil yo'l bor:
+
+1. Mashqdan so'ng **«📅 Mashqlar tarixi» → «📤 Ulashish»** tugmasini bosing —
+   bugungi mashqlar va kaloriya tayyor matn ko'rinishida chiqadi.
+2. Samsung Health'da **Mashqlar → ➕ Mashq kiritish (Manual input)** bo'limini
+   oching va o'sha kaloriya/vaqtni kiriting — sog'lomlik statistikangizga qo'shiladi.
+
+To'liq avtomatik sinxronizatsiya kerak bo'lsa, kelajakda bu ilovani Health
+Connect API'li Android ilovaga (masalan, Capacitor bilan) o'rash mumkin.
 
 ## Texnologiyalar
 
