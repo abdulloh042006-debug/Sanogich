@@ -125,6 +125,74 @@ const EXERCISES = {
     },
   },
 
+  plank: {
+    name: "Planka",
+    tip: "Kamerani yon tomondan qo'ying — planka vaqti soniyada o'lchanadi",
+    type: "hold",
+    caloriesPerRep: 0.05, // soniyasiga
+    stages: { hold: "USHLAB TURING 🔥" },
+    detect(lm) {
+      const leftOk = visible(lm, LM.LEFT_SHOULDER, LM.LEFT_HIP, LM.LEFT_ANKLE);
+      const rightOk = visible(lm, LM.RIGHT_SHOULDER, LM.RIGHT_HIP, LM.RIGHT_ANKLE);
+      if (!leftOk && !rightOk) {
+        return { valid: false, message: "Tanangiz to'liq ko'rinmayapti — yon tomondan turing" };
+      }
+      const side = leftOk
+        ? [lm[LM.LEFT_SHOULDER], lm[LM.LEFT_HIP], lm[LM.LEFT_ANKLE]]
+        : [lm[LM.RIGHT_SHOULDER], lm[LM.RIGHT_HIP], lm[LM.RIGHT_ANKLE]];
+      const [shoulder, hip, ankle] = side;
+      const bodyStraight = angle(shoulder, hip, ankle) > 150;
+      const horizontal = Math.abs(shoulder.y - hip.y) < Math.abs(shoulder.x - hip.x);
+      if (bodyStraight && horizontal) return { valid: true, stage: "hold" };
+      if (horizontal && !bodyStraight) {
+        return { valid: true, stage: null, message: "Belingizni to'g'rilang — tana bir chiziqda bo'lsin" };
+      }
+      return { valid: true, stage: null };
+    },
+  },
+
+  lunge: {
+    name: "Vipad",
+    tip: "Kameraga yon tomondan turing, ikkala oyoq ko'rinsin",
+    caloriesPerRep: 0.4,
+    stages: { down: "PASTDA ⬇", up: "TEPADA ⬆" },
+    detect(lm) {
+      if (!visible(lm, LM.LEFT_HIP, LM.LEFT_KNEE, LM.LEFT_ANKLE,
+                   LM.RIGHT_HIP, LM.RIGHT_KNEE, LM.RIGHT_ANKLE)) {
+        return { valid: false, message: "Ikkala oyoq ham ko'rinishi kerak" };
+      }
+      const left = angle(lm[LM.LEFT_HIP], lm[LM.LEFT_KNEE], lm[LM.LEFT_ANKLE]);
+      const right = angle(lm[LM.RIGHT_HIP], lm[LM.RIGHT_KNEE], lm[LM.RIGHT_ANKLE]);
+      // Vipadda old tizza ~90° gacha bukiladi, orqa tizza ham pastga tushadi.
+      if (Math.min(left, right) < 100) return { valid: true, stage: "down" };
+      if (left > 160 && right > 160) return { valid: true, stage: "up" };
+      return { valid: true, stage: null };
+    },
+  },
+
+  highknees: {
+    name: "Tizza ko'tarish",
+    tip: "Kameraga old tomondan qarab turing, to'liq bo'y ko'rinsin",
+    caloriesPerRep: 0.2,
+    stages: { down: "PASTDA", up: "TIZZA TEPADA ⬆" },
+    detect(lm) {
+      if (!visible(lm, LM.LEFT_HIP, LM.RIGHT_HIP, LM.LEFT_KNEE, LM.RIGHT_KNEE)) {
+        return { valid: false, message: "Oyoqlaringiz ko'rinmayapti — orqaroq turing" };
+      }
+      const hipY = avg(lm[LM.LEFT_HIP].y, lm[LM.RIGHT_HIP].y);
+      // Tana bo'yiga nisbatan chegara — kameradan uzoq-yaqinlikka bog'liq bo'lmasin.
+      const torso = Math.abs(avg(lm[LM.LEFT_SHOULDER].y, lm[LM.RIGHT_SHOULDER].y) - hipY);
+      const margin = torso * 0.25;
+      const leftUp = lm[LM.LEFT_KNEE].y < hipY - margin;
+      const rightUp = lm[LM.RIGHT_KNEE].y < hipY - margin;
+      if (leftUp || rightUp) return { valid: true, stage: "up" };
+      if (lm[LM.LEFT_KNEE].y > hipY + margin && lm[LM.RIGHT_KNEE].y > hipY + margin) {
+        return { valid: true, stage: "down" };
+      }
+      return { valid: true, stage: null };
+    },
+  },
+
   jumpingjack: {
     name: "Jumping Jack",
     tip: "Kameraga old tomondan qarab turing, butun bo'yingiz ko'rinsin",
@@ -160,6 +228,8 @@ const state = {
   facingMode: "user",
   startTime: null,
   lastRepTime: 0,
+  holdMs: 0,      // planka kabi "hold" mashqlarda to'plangan vaqt
+  holdLast: null, // oxirgi kadr vaqti (hold davom etayotganda)
 };
 
 // ── DOM ──
@@ -238,6 +308,34 @@ function processDetection(result) {
   if (!res.valid) {
     setFeedback(res.message, "warn");
     stageEl.textContent = "—";
+    state.holdLast = null;
+    return;
+  }
+
+  // "Hold" turdagi mashqlar (planka): takror emas, to'g'ri holatda
+  // o'tkazilgan vaqt soniyada sanaladi.
+  if (ex.type === "hold") {
+    const now = performance.now();
+    if (res.stage === "hold") {
+      if (state.holdLast !== null) state.holdMs += now - state.holdLast;
+      state.holdLast = now;
+      stageEl.textContent = ex.stages.hold;
+      const secs = Math.floor(state.holdMs / 1000);
+      if (secs !== state.reps) {
+        state.reps = secs;
+        state.calories += ex.caloriesPerRep;
+        updateRepUI();
+        if (secs > 0 && secs % 10 === 0) {
+          beep(1320);
+          speakCount(secs);
+        }
+      }
+      setFeedback("Ajoyib! Shu holatda turing 🔥", "good");
+    } else {
+      state.holdLast = null;
+      stageEl.textContent = "—";
+      setFeedback(res.message ?? "Planka holatiga o'ting", res.message ? "warn" : "");
+    }
     return;
   }
 
@@ -363,6 +461,7 @@ async function startCamera() {
 
 function stopCamera() {
   state.running = false;
+  state.holdLast = null; // pauzadan keyin vaqt sakrab ketmasin
   stream?.getTracks().forEach((t) => t.stop());
   stream = null;
 }
@@ -377,9 +476,12 @@ document.querySelectorAll(".exercise-btn").forEach((btn) => {
     state.exercise = btn.dataset.exercise;
     state.reps = 0;
     state.stage = null;
+    state.holdMs = 0;
+    state.holdLast = null;
     repCountEl.textContent = "0";
     stageEl.textContent = "—";
     const ex = EXERCISES[state.exercise];
+    $("rep-label").textContent = ex.type === "hold" ? "soniya" : "marta";
     exerciseTipEl.textContent = ex.tip;
     if (state.running) {
       setFeedback(`${ex.name}: ${ex.tip}`, "");
@@ -390,6 +492,8 @@ document.querySelectorAll(".exercise-btn").forEach((btn) => {
 $("reset-btn").addEventListener("click", () => {
   state.reps = 0;
   state.stage = null;
+  state.holdMs = 0;
+  state.holdLast = null;
   repCountEl.textContent = "0";
   stageEl.textContent = "—";
   setFeedback("Hisob nolga tushirildi", "");
@@ -413,3 +517,16 @@ window.addEventListener("pagehide", stopCamera);
 // Boshlang'ich holat
 startScreen.classList.add("visible");
 exerciseTipEl.textContent = EXERCISES[state.exercise].tip;
+
+// Avtomatik testlar uchun ichki interfeys — sun'iy landmarklar bilan
+// sanash mantiqini kamerasiz ham tekshirish imkonini beradi.
+window.__sanogichTest = {
+  process: processDetection,
+  state: () => state,
+  setExercise: (name) => {
+    state.exercise = name;
+    state.stage = null;
+    state.holdMs = 0;
+    state.holdLast = null;
+  },
+};
