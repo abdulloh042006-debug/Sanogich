@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}Create account — Sanogich{% endblock %}
+
+{% block content %}
+<div class="auth-card">
+  <h1>Create your account</h1>
+  <form method="post" action="{{ url_for('auth.register') }}" class="form" novalidate>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+    <label class="field">
+      <span class="field-label">Email</span>
+      <input type="email" name="email" required autocomplete="email"
+             value="{{ request.form.get('email', '') }}" placeholder="you@example.com">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Username</span>
+      <input type="text" name="username" required autocomplete="username"
+             minlength="3" maxlength="30" pattern="[A-Za-z0-9_]+"
+             value="{{ request.form.get('username', '') }}" placeholder="letters, digits, underscores">
+    </label>
+
+    <label class="field">
+      <span class="field-label">Password</span>
+      <input type="password" name="password" required autocomplete="new-password"
+             minlength="8" placeholder="at least 8 characters">
+    </label>
+
+    <button type="submit" class="btn btn-primary btn-block">Create account</button>
+  </form>
+  <p class="auth-alt">Already have an account? <a href="{{ url_for('auth.login') }}">Sign in</a></p>
+</div>
+{% endblock %}

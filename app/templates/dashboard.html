@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — Sanogich{% endblock %}
+
+{% block content %}
+<div class="dashboard-head">
+  <h1>Your counters</h1>
+  <button id="new-counter-btn" class="btn btn-primary">+ New counter</button>
+</div>
+
+<section id="stats-bar" class="stats-bar" aria-label="Summary statistics">
+  <div class="stat"><span class="stat-value" id="stat-today">–</span><span class="stat-label">today</span></div>
+  <div class="stat"><span class="stat-value" id="stat-streak">–</span><span class="stat-label">day streak</span></div>
+  <div class="stat"><span class="stat-value" id="stat-best">–</span><span class="stat-label">best streak</span></div>
+  <div class="stat stat-chart">
+    <div id="daily-chart" class="daily-chart" aria-label="Activity over the last 14 days"></div>
+    <span class="stat-label">last 14 days</span>
+  </div>
+</section>
+
+<section id="counter-grid" class="counter-grid" aria-live="polite"></section>
+
+<div id="empty-state" class="empty-state" hidden>
+  <p>No counters yet.</p>
+  <p>Create your first counter and start building a streak.</p>
+</div>
+
+<!-- Create / edit modal -->
+<dialog id="counter-modal" class="modal">
+  <form id="counter-form" method="dialog" class="form">
+    <h2 id="modal-title">New counter</h2>
+
+    <label class="field">
+      <span class="field-label">Name</span>
+      <input type="text" id="f-name" maxlength="60" required placeholder="e.g. Glasses of water">
+    </label>
+
+    <div class="field-row">
+      <label class="field">
+        <span class="field-label">Step</span>
+        <input type="number" id="f-step" min="1" max="10000" value="1" required>
+      </label>
+      <label class="field">
+        <span class="field-label">Daily target <small>(optional)</small></span>
+        <input type="number" id="f-target" min="1" max="1000000000" placeholder="none">
+      </label>
+    </div>
+
+    <div class="field">
+      <span class="field-label">Color</span>
+      <div id="color-swatches" class="swatches"></div>
+    </div>
+
+    <p id="form-error" class="form-error" hidden></p>
+
+    <div class="modal-actions">
+      <button type="button" id="modal-cancel" class="btn btn-ghost">Cancel</button>
+      <button type="submit" id="modal-save" class="btn btn-primary">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- History modal -->
+<dialog id="history-modal" class="modal">
+  <div class="modal-inner">
+    <h2 id="history-title">History</h2>
+    <p id="history-streaks" class="history-streaks"></p>
+    <ul id="history-list" class="history-list"></ul>
+    <div class="modal-actions">
+      <button type="button" id="history-close" class="btn btn-ghost">Close</button>
+    </div>
+  </div>
+</dialog>
+
+<div id="toast" class="toast" role="status" hidden></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/api.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard.js') }}"></script>
+{% endblock %}

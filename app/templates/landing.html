@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Sanogich — count what matters{% endblock %}
+
+{% block content %}
+<section class="hero">
+  <h1>Count what matters.<br>Build streaks that last.</h1>
+  <p class="hero-sub">
+    Sanogich is a fast, focused counter and habit tracker. Create counters for
+    anything — glasses of water, pages read, workouts done — tap to count, set
+    daily targets, and watch your streaks grow.
+  </p>
+  <div class="hero-actions">
+    <a class="btn btn-primary btn-lg" href="{{ url_for('auth.register') }}">Create a free account</a>
+    <a class="btn btn-ghost btn-lg" href="{{ url_for('auth.login') }}">Sign in</a>
+  </div>
+</section>
+
+<section class="features">
+  <div class="feature-card">
+    <div class="feature-icon">⚡</div>
+    <h3>One-tap counting</h3>
+    <p>Big, satisfying buttons. Increment, decrement, undo — everything is one tap away, on any device.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🎯</div>
+    <h3>Targets &amp; progress</h3>
+    <p>Set a goal per counter and see a live progress ring fill up as you get closer.</p>
+  </div>
+  <div class="feature-card">
+    <div class="feature-icon">🔥</div>
+    <h3>Streaks &amp; stats</h3>
+    <p>Daily activity charts, current and best streaks — the numbers that keep you coming back.</p>
+  </div>
+</section>
+{% endblock %}
